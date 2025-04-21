@@ -136,8 +136,13 @@ jobs:
           Categories=Utility;
           EOF
           
-          # Copy icon (assuming palindromegame.png exists in assets/)
-          cp assets/palindromegame.png AppDir/palindromegame.png || echo "Icon not found, using placeholder"
+          # Copy icon (check if it exists)
+          if [ -f assets/palindromegame.png ]; then
+            cp assets/palindromegame.png AppDir/palindromegame.png
+          else
+            echo "ERROR: Icon 'assets/palindromegame.png' not found!"
+            exit 1
+          fi
           
           # Debug: List the AppDir structure to verify
           find AppDir -type f | sort
