@@ -101,11 +101,11 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y patchelf desktop-file-utils libgirepository1.0-dev libfuse2 imagemagick libfreetype6-dev libpng-dev
+          sudo apt-get install -y patchelf desktop-file-utils libgirepository1.0-dev libfuse2 imagemagick libfreetype6-dev libpng-dev libqt6core6 libqt6gui6 libqt6widgets6
           pip install nuitka pyqt6 matplotlib nltk pandas requests appdirs
       - name: Debug PyQt6 plugins
         run: |
-          python -c "from PyQt6.QtCore import QLibraryInfo; print(QLibraryInfo.location(QLibraryInfo.PluginsPath))"
+          python -c "from PyQt6.QtCore import QLibraryInfo; print(QLibraryInfo.path(QLibraryInfo.LibraryPath.PluginsPath))"
           find /opt/hostedtoolcache/Python/3.12*/x64/lib/python3.12/site-packages/PyQt6 -name plugins
       - name: Download NLTK data
         run: |
@@ -119,7 +119,6 @@ jobs:
             --standalone \
             --onefile \
             --enable-plugin=pyqt6 \
-            --include-qt-plugins=platforms,imageformats,iconengines \
             --output-dir=build \
             --assume-yes-for-downloads \
             --include-module=appdirs,matplotlib,nltk,pyqt6
@@ -161,7 +160,7 @@ jobs:
       - name: Upload AppImage as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PaletteGame-Linux
+          name: PalindromeGame-Linux
           path: PalindromeGame-x86_64.AppImage
       - name: Upload to GitHub Release
         if: github.event_name == 'release'
