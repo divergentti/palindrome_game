@@ -56,7 +56,7 @@ jobs:
       - name: Build with Nuitka
         shell: cmd
         run: |
-          python -m nuitka PalindromeGame.py --standalone --onefile --follow-imports --enable-plugin=pyqt6 --output-dir=build --windows-console-mode=disable --assume-yes-for-downloads --include-data-file=palindromes.json=palindromes.json
+          python -m nuitka PalindromeGame.py --include-data-files=palindromes.json=palindromes.json --standalone --onefile --follow-imports --enable-plugin=pyqt6 --output-dir=build --windows-console-mode=disable --assume-yes-for-downloads --include-data-file=palindromes.json=palindromes.json
       - name: Upload .exe as artifact
         uses: actions/upload-artifact@v4
         with:
@@ -99,7 +99,7 @@ jobs:
           pip install nuitka pyqt6 matplotlib nltk pandas requests
       - name: Build with Nuitka
         run: |
-          python -m nuitka PalindromeGame.py --standalone --onefile --enable-plugin=pyqt6 --output-dir=build --follow-imports --assume-yes-for-downloads --include-data-file=palindromes.json=palindromes.json
+          python -m nuitka PalindromeGame.py --include-data-files=palindromes.json=palindromes.json --standalone --onefile --enable-plugin=pyqt6 --output-dir=build --follow-imports --assume-yes-for-downloads --include-data-file=palindromes.json=palindromes.json
       - name: Verify build output
         run: |
           ls -la build/
