@@ -69,7 +69,7 @@ jobs:
           files: build/PalindromeGame.exe
 
   build-linux:
-    runs-on: ubuntu-22.04  # Updated to ubuntu-22.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Check out the repository
         uses: actions/checkout@v4
@@ -103,13 +103,26 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y patchelf desktop-file-utils libgirepository1.0-dev libfuse2 imagemagick libfreetype6-dev libpng-dev
           pip install nuitka pyqt6 matplotlib nltk pandas requests appdirs
+      - name: Debug PyQt6 plugins
+        run: |
+          python -c "from PyQt6.QtCore import QLibraryInfo; print(QLibraryInfo.location(QLibraryInfo.PluginsPath))"
+          find /opt/hostedtoolcache/Python/3.12*/x64/lib/python3.12/site-packages/PyQt6 -name plugins
       - name: Download NLTK data
         run: |
           python -c "import nltk; nltk.download('words', download_dir='nltk_data', quiet=True)"
           ls -R nltk_data
       - name: Build with Nuitka
         run: |
-          python -m nuitka PalindromeGame.py --include-data-files=palindromes.json=palindromes.json --include-data-dir=nltk_data=nltk_data --standalone --onefile --enable-plugin=pyqt6 --include-qt-plugins=sensible,styles,iconengines,imageformats,platforms --output-dir=build --assume-yes-for-downloads --include-module=appdirs,matplotlib,nltk,pyqt6
+          python -m nuitka PalindromeGame.py \
+            --include-data-files=palindromes.json=palindromes.json \
+            --include-data-dir=nltk_data=nltk_data \
+            --standalone \
+            --onefile \
+            --enable-plugin=pyqt6 \
+            --include-qt-plugins=platforms,imageformats,iconengines \
+            --output-dir=build \
+            --assume-yes-for-downloads \
+            --include-module=appdirs,matplotlib,nltk,pyqt6
       - name: Verify build output
         run: |
           ls -la build/
@@ -148,7 +161,7 @@ jobs:
       - name: Upload AppImage as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PalindromeGame-Linux
+          name: PaletteGame-Linux
           path: PalindromeGame-x86_64.AppImage
       - name: Upload to GitHub Release
         if: github.event_name == 'release'
