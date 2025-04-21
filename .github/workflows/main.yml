@@ -103,10 +103,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y patchelf desktop-file-utils libgirepository1.0-dev libfuse2 imagemagick libfreetype6-dev libpng-dev libqt6core6 libqt6gui6 libqt6widgets6
           pip install nuitka pyqt6 matplotlib nltk pandas requests appdirs
-      - name: Debug PyQt6 plugins
-        run: |
-          python -c "from PyQt6.QtCore import QLibraryInfo; print(QLibraryInfo.path(QLibraryInfo.LibraryPath.PluginsPath))"
-          find /opt/hostedtoolcache/Python/3.12*/x64/lib/python3.12/site-packages/PyQt6 -name plugins
+          pip list | grep -E "nuitka|pyqt6|matplotlib|nltk|pandas|requests|appdirs"
       - name: Download NLTK data
         run: |
           python -c "import nltk; nltk.download('words', download_dir='nltk_data', quiet=True)"
@@ -118,10 +115,11 @@ jobs:
             --include-data-dir=nltk_data=nltk_data \
             --standalone \
             --onefile \
+            --follow-imports \
             --enable-plugin=pyqt6 \
             --output-dir=build \
             --assume-yes-for-downloads \
-            --include-module=appdirs,matplotlib,nltk,pyqt6
+            --include-module=appdirs,matplotlib,nltk
       - name: Verify build output
         run: |
           ls -la build/
