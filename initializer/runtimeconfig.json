@@ -1,0 +1,13 @@
+{
+    "data_path": "initializer/",
+    "verbs_file": "english_verbs.csv",
+    "adjectives_file": "english_adjectives.csv",
+    "nouns_file": "english_nouns.csv",
+    "long_text_file": "merged_books.txt",
+    "new_palindromes_file": "new_palindromes.csv",
+    "converted_palindromes_file": "palindromes.json",
+    "new_nouns_palindromes_file": "new_nouns_palindromes.csv",
+    "new_verbs_palindromes_file": "new_verbs_palindromes.csv",
+    "new_adjectives_palindromes_file": "new_adjectives_palindromes.csv",
+    "new_long_text_palindromes_file": "new_long_text_palindromes.csv"
+}
