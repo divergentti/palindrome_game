@@ -24,6 +24,62 @@ import random
 import nltk
 import os
 import matplotlib
+import appdirs
+import shutil
+
+
+def get_data_dir():
+    """Get platform-specific data directory for the app."""
+    app_name = "palindromegame"
+    app_author = "Divergentti"
+    data_dir = appdirs.user_data_dir(app_name, app_author)
+
+    # Create directory if it doesn't exist
+    os.makedirs(data_dir, exist_ok=True)
+    return data_dir
+
+# Initialize paths
+DATA_DIR = get_data_dir()
+PALINDROMES_FILE = os.path.join(DATA_DIR, "palindromes.json")
+PLAYERS_FILE = os.path.join(DATA_DIR, "players.json")
+
+# For bundled data (Nuitka onefile)
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    BUNDLE_DIR = sys._MEIPASS
+else:
+    BUNDLE_DIR = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_PALINDROMES_FILE = os.path.join(BUNDLE_DIR, "palindromes.json")
+
+# Load or initialize palindromes
+try:
+    # 1. Try user's data directory first
+    with open(PALINDROMES_FILE, 'r') as f:
+        pre_generated = json.load(f)
+except (FileNotFoundError, json.JSONDecodeError):
+    try:
+        # 2. Fallback to bundled file (for first run)
+        with open(DEFAULT_PALINDROMES_FILE, 'r') as f:
+            pre_generated = json.load(f)
+        # Copy to user directory for future updates
+        shutil.copyfile(DEFAULT_PALINDROMES_FILE, PALINDROMES_FILE)
+    except Exception as e:
+        print(f"Error loading palindromes: {e}")
+        pre_generated = []
+        reverse_pairs = []
+
+# Load player data
+try:
+    with open(PLAYERS_FILE, 'r') as f:
+        players = json.load(f)
+except (FileNotFoundError, json.JSONDecodeError):
+    players = {}
+
+# Update save_players() function
+def save_players():
+    """Save players to platform-specific directory"""
+    with open(PLAYERS_FILE, 'w') as f:
+        json.dump(players, f, indent=2)
+
 
 debug_gui = False
 
@@ -56,43 +112,34 @@ except ImportError:
         if debug_gui:
             print("Failed to import FigureCanvas from backend_qt")
         raise ImportError("Cannot import FigureCanvas; ensure Matplotlib Qt backend is installed")
-from nltk.corpus import words
 
 # Enable Qt debugging
 os.environ["QT_LOGGING_RULES"] = "qt6.*=true"
 
+
+NLTK_DATA_DIR = os.path.join(DATA_DIR, 'nltk_data')
+os.makedirs(NLTK_DATA_DIR, exist_ok=True)
+
 # Download NLTK words if not already downloaded
-nltk_data_path = 'nltk_data'
-nltk.download('words', quiet=True)
+nltk.data.path = [NLTK_DATA_DIR]
+os.environ['NLTK_DATA'] = NLTK_DATA_DIR
+
+
+try:
+    nltk.data.find('corpora/words')
+    if debug_gui:
+        print("NLTK words already downloaded")
+except LookupError:
+    if debug_gui:
+        print(f"Downloading NLTK words to {NLTK_DATA_DIR}")
+    nltk.download('words', download_dir=NLTK_DATA_DIR, quiet=True)
+
+from nltk.corpus import words
 english_words = set(words.words())
+reverse_pairs = [(w, w[::-1]) for w in english_words if w[::-1] in english_words and w < w[::-1]]
 
 GAME_VERSION = "Ver. 0.0.1 - 21.04.2025"
 players = {}
-
-try:
-    with open("players.json", 'r') as f:
-        players = json.load(f)
-except (FileNotFoundError, json.JSONDecodeError):
-    players = {}
-
-# Load pre-generated palindromes, created with the initializer.py or other way
-try:
-    with open("palindromes.json", 'r') as f:
-        pre_generated = json.load(f)
-    if debug_gui:
-        print(f"Loaded palindromes.json: {len(pre_generated)} palindromes")
-    reverse_pairs = [(w, w[::-1]) for w in english_words if w[::-1] in english_words and w < w[::-1]]
-except (OSError, json.JSONDecodeError) as e:
-    print(f"Error loading palindromes.json: {e}")
-    pre_generated = []
-    reverse_pairs = []
-
-
-def save_players():
-    """Save the players database to players.json."""
-    with open("players.json", 'w') as f:
-        json.dump(players, f)
-
 
 class Inspector:
     """Inspects if user input is a palindrome and calculates its 'make sense' score."""
@@ -960,7 +1007,7 @@ class MainWindow(QMainWindow):
             else:
                 total_score = length * sense_score
                 pre_generated.append(text)
-                with open('palindromes.json', 'w') as f:
+                with open(PALINDROMES_FILE, 'w') as f:
                     json.dump(pre_generated, f)
                 self.player["new_palindromes"].append(text)
                 feedback = (
