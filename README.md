@@ -1,8 +1,8 @@
 # Palindrome Game (English Version)
 
-**Last Updated: 15 May 2025**
+**Last Updated: 21 April 2025**
 
-Welcome to the **Palindrome Game**, an interactive application designed to generate, visualize, and play with palindromes in English! This project builds on the insights gained from my previous work on a Finnish palindrome generator (divergentti/palindrome_generator) and extends the concept to English, incorporating a machine learning-inspired approach to generate over 31,000 palindromes using the `initializer.py` script. The game features a PyQt6-based GUI with real-time palindrome validation, scoring, visualization, and feedback to enhance the user experience.
+Welcome to the **Palindrome Game**, an interactive application designed to generate, visualize, and play with palindromes in English! This project builds on the insights gained from my previous work on a Finnish palindrome generator ([divergentti/palindrome_generator](https://github.com/divergentti/palindrome_generator)) and extends the concept to English, incorporating a machine learning-inspired approach to generate over 31,000 palindromes using the `initializer.py` script. The game features a PyQt6-based GUI with real-time palindrome validation, scoring, visualization, and feedback to enhance the user experience.
 
 ## Table of Contents
 
@@ -22,13 +22,13 @@ Welcome to the **Palindrome Game**, an interactive application designed to gener
 
 ## Motivation
 
-The inspiration for this project stems from my previous work on a Finnish palindrome generator (divergentti/palindrome_generator), where I explored the challenges of programmatically generating palindromes in Finnish. Palindromes are fascinating because they require strict symmetry—a word or phrase must read the same forwards and backwards—which poses a unique challenge for computational approaches like machine learning (ML). In the Finnish version, I learned that while ML models (e.g., LSTM) excel at recognizing patterns and probabilities, they struggle with the structural symmetry required for palindromes. This led me to develop a hybrid approach combining logical verification with word suggestion mechanisms, which I adapted and scaled for English in this project.
+The inspiration for this project stems from my previous work on a Finnish palindrome generator ([divergentti/palindrome_generator](https://github.com/divergentti/palindrome_generator)), where I explored the challenges of programmatically generating palindromes in Finnish. Palindromes are fascinating because they require strict symmetry—a word or phrase must read the same forwards and backwards—which poses a unique challenge for computational approaches like machine learning (ML). In the Finnish version, I learned that while ML models (e.g., LSTM) excel at recognizing patterns and probabilities, they struggle with the structural symmetry required for palindromes. This led me to develop a hybrid approach combining logical verification with word suggestion mechanisms, which I adapted and scaled for English in this project.
 
 The English version aims to make palindrome generation and gameplay accessible to a broader audience while improving the user interface and adding interactive features like real-time feedback and visualization.
 
 ## Project Overview
 
-The Palindrome Game allows users to input phrases and check if they form palindromes. The application provides real-time feedback, scores the palindromes based on length and "sense" (semantic validity), and visualizes the distribution of palindrome lengths. Over 31,000 palindromes were pre-generated using the `initializer.py` script, which processes English words from various sources (verbs, nouns, adjectives, and books from Project Gutenberg) to create a rich dataset for the game. The game is built using PyQt6 for the GUI and integrates Matplotlib for visualization.
+The Palindrome Game allows users to input phrases and check if they form palindromes. The application provides real-time feedback, scores the palindromes based on length and "sense" (semantic validity), and visualizes the distribution of palindrome lengths. Over 31,000 palindromes were pre-generated using the `initializer.py` script (located in the `initializer/` directory), which processes English words from various sources (verbs, nouns, adjectives, and books from Project Gutenberg) to create a rich dataset for the game. The resulting `palindromes.json` file is stored in the root directory and used by the game at runtime. The game is built using PyQt6 for the GUI and integrates Matplotlib for visualization.
 
 ## Features
 
@@ -37,10 +37,10 @@ The Palindrome Game allows users to input phrases and check if they form palindr
 - **Scoring System**: Scores are calculated based on palindrome length and a "sense score" (semantic validity). Bonus points are awarded for known palindromes.
 - **Feedback and Suggestions**: Provides detailed feedback on whether the input is a palindrome, suggests extensions, and shows similar palindromes from the pre-generated dataset.
 - **Visualization**: Displays a histogram of palindrome lengths from the pre-generated dataset, with a marker indicating the length of the current input.
-- **Pre-Generated Palindromes**: Includes a dataset of over 31,000 palindromes generated using `initializer.py` from English verbs, nouns, adjectives, and book texts.
+- **Pre-Generated Palindromes**: Includes a dataset of over 31,000 palindromes generated using `initializer.py` from English verbs, nouns, adjectives, and book texts, stored in `palindromes.json` in the root directory.
 - **Menu Options**: Access game instructions, inspect palindromes, visualize distributions, view player stats, and adjust settings (e.g., number of matching palindromes to show).
 
-## Installation from sources and generating palindromes
+## Installation
 
 ### Prerequisites
 
@@ -59,13 +59,13 @@ Install the required packages using pip:
 pip install PyQt6 matplotlib nltk pandas requests
 ```
 
-**Note**: If you prefer not to set up a Python environment, you can download pre-built binaries and palindromes for Windows and Linux from the [GitHub Releases page](#using-pre-built-binaries).
+**Note**: If you prefer not to set up a Python environment, you can download pre-built binaries for Windows and Linux from the [GitHub Releases page](#using-pre-built-binaries).
 
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/divergentti/palindrome-game-english.git
-cd palindrome-game-english
+git clone https://github.com/divergentti/palindrome_game.git
+cd palindrome_game
 ```
 
 ### Download NLTK Data (for `initializer.py`)
@@ -82,7 +82,7 @@ nltk.download('wordnet')
 ### Running the Game
 
 1. Ensure all dependencies are installed.
-2. Run the main game script:
+2. Run the main game script from the root directory:
 
    ```bash
    python PalindromeGame.py
@@ -92,52 +92,53 @@ nltk.download('wordnet')
    - View real-time highlighting, scores, and feedback.
    - Explore the menu options for instructions, stats, and settings.
 
+The game uses `palindromes.json` from the root directory (`./palindromes.json`) at runtime.
+
 ### Using Pre-Built Binaries
 
-For convenience, pre-built binaries for Windows and Linux are available on the [GitHub Releases page](https://github.com/divergentti/palindrome-game-english/releases). These binaries were created using GitHub Workflows with Nuitka, a Python compiler that produces standalone executables.
-
-Make sure generated palindromes.json file is at the same directory as PalindromeGame.py
+For convenience, pre-built binaries for Windows and Linux are available on the [GitHub Releases page](https://github.com/divergentti/palindrome_game/releases). These binaries were created using GitHub Workflows with Nuitka, a Python compiler that produces standalone executables. The binaries include the `palindromes.json` file, so no additional setup is required.
 
 #### Download and Run
 
-1. Visit the [Releases page](https://github.com/divergentti/palindrome-game-english/releases) and download the latest release for your operating system (Windows or Linux).
-2. Extract the downloaded archive.
-3. Run the executable:
+1. Visit the [Releases page](https://github.com/divergentti/palindrome_game/releases) and download the latest release for your operating system:
+   - **Windows**: `PalindromeGame.exe`
+   - **Linux**: `PalindromeGame-x86_64.AppImage`
+2. Run the executable:
    - **Windows**: Double-click `PalindromeGame.exe` or run via command line:
      ```bash
      .\PalindromeGame.exe
      ```
-   - **Linux**: Make the binary executable and run it:
+   - **Linux**: Make the AppImage executable and run it:
      ```bash
-     chmod +x PalindromeGame
-     ./PalindromeGame
+     chmod +x PalindromeGame-x86_64.AppImage
+     ./PalindromeGame-x86_64.AppImage
      ```
-4. The game will launch with all dependencies included, no Python installation required.
+3. The game will launch with all dependencies and the `palindromes.json` file included, no Python installation required.
 
-**Note**: The binary includes the pre-generated `palindromes.json` file. If you generate new palindromes using `initializer.py`, you’ll need to place the updated `palindromes.json` in the same directory as the binary.
+**Note**: If you generate new palindromes using `initializer.py`, the updated `palindromes.json` will already be bundled in the binary. To use a different dataset, you’ll need to rebuild the binary with the updated `palindromes.json` file.
 
 ### Generating New Palindromes
 
-If you want to generate new palindromes or recreate the dataset:
+If you want to generate new palindromes or recreate the dataset, you can use the `initializer.py` script located in the `initializer/` directory:
 
-1. Configure `data/runtimeconfig.json` with the appropriate file paths for verbs, nouns, adjectives, and output files.
-2. Download source data (books, verbs, nouns, adjectives):
-
+1. Navigate to the `initializer/` directory:
+   ```bash
+   cd initializer
+   ```
+2. Configure `data/runtimeconfig.json` with the appropriate file paths for verbs, nouns, adjectives, and output files. Note that paths should be relative to the `initializer/` directory.
+3. Download source data (books, verbs, nouns, adjectives):
    ```bash
    python initializer.py download
    ```
-3. Generate palindromes from a specific file (e.g., verbs):
-
+4. Generate palindromes from a specific file (e.g., verbs):
    ```bash
    python initializer.py generate --filename data/english_verbs.csv
    ```
-4. Convert generated CSV files to a single JSON file for the game:
-
+5. Convert generated CSV files to a single JSON file for the game:
    ```bash
    python initializer.py convert
    ```
-
-   This will create `palindromes.json` in the specified directory, which the game uses.
+   This will create `palindromes.json` in the specified directory (as defined in `runtimeconfig.json`). Move the generated `palindromes.json` to the root directory (`../palindromes.json`) for the game to use it.
 
 **Note**: Generating palindromes can take hours to days depending on your hardware and the input size.
 
@@ -153,7 +154,7 @@ I started by attempting to generate palindromes by randomly combining English wo
 
 ### Building a Palindrome Generator
 
-The `initializer.py` script implements a more structured approach:
+The `initializer.py` script (in the `initializer/` directory) implements a more structured approach:
 
 1. **Download Data**: Downloads books from Project Gutenberg (e.g., *Pride and Prejudice*, *Moby Dick*) and extracts verbs, nouns, and adjectives using NLTK’s WordNet.
 2. **Generate Palindromes**:
@@ -162,11 +163,11 @@ The `initializer.py` script implements a more structured approach:
    - Iterates through the alphabet to insert letters in the middle, forming new symmetrical words (e.g., "racecar" becomes "racecar").
    - Extends palindromes by adding words that maintain symmetry (e.g., "racecar" becomes "racecar level").
    - Validates against vocabulary to ensure meaningfulness.
-3. **Result**: Generated over 31,000 palindromes, stored in CSV files (`new_nouns_palindromes.csv`, `new_verbs_palindromes.csv`, `new_adjectives_palindromes.csv`, `new_long_text_palindromes.csv`), and converted to `palindromes.json` for the game.
+3. **Result**: Generated over 31,000 palindromes, stored in CSV files (`new_nouns_palindromes.csv`, `new_verbs_palindromes.csv`, `new_adjectives_palindromes.csv`, `new_long_text_palindromes.csv`), and converted to `palindromes.json` for the game, which is now located in the root directory.
 
 ### Game Logic
 
-The game logic, implemented in `PalindromeGame.py`, includes:
+The game logic, implemented in `PalindromeGame.py` (in the root directory), includes:
 
 - **Input Handling**: Uses a `QTextEdit` field for input, with a height of 40 pixels to save space.
 - **Highlighting**: Colors characters in real-time (green for matching pairs, red for mismatches, blue for the middle character in odd-length palindromes).
@@ -176,7 +177,7 @@ The game logic, implemented in `PalindromeGame.py`, includes:
 
 ## Generating Palindromes with `initializer.py`
 
-The `initializer.py` script is a key component for generating the palindrome dataset:
+The `initializer.py` script, located in the `initializer/` directory, is a key component for generating the palindrome dataset:
 
 - **Download Phase**: Downloads books and extracts words (verbs, nouns, adjectives) using NLTK’s WordNet.
 - **Generation Phase**:
@@ -184,7 +185,7 @@ The `initializer.py` script is a key component for generating the palindrome dat
   - Inserts letters or words to form symmetrical phrases.
   - Validates against vocabulary to ensure meaningfulness.
   - Extends palindromes by adding anagramic words at both ends.
-- **Output**: Generated 31,000+ palindromes across four categories, stored in CSV files, and combined into `palindromes.json`.
+- **Output**: Generated 31,000+ palindromes across four categories, stored in CSV files, and combined into `palindromes.json`, which is placed in the root directory for the game to use.
 
 Example palindromes generated:
 
