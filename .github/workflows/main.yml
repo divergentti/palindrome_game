@@ -1,0 +1,156 @@
+name: Build Nuitka EXE for Windows and Linux AppImage
+
+on:
+  push:
+    branches:
+      - main
+  release:
+    types: [created]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+      - name: Verify file path
+        run: |
+          Get-ChildItem -Recurse
+          if (Test-Path -Path "PalindromeGame.py") {
+              Write-Output "File exists"
+          } else {
+              Write-Output "File does not exist"
+              exit 1
+          }
+          if (Test-Path -Path "palindromes.json") {
+              Write-Output "palindromes.json exists"
+          } else {
+              Write-Output "palindromes.json does not exist"
+              exit 1
+          }
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          pip install nuitka pyqt6 matplotlib nltk pandas requests
+      - name: Download dependency walker manually
+        shell: powershell
+        run: |
+          $dependsUrl = "https://dependencywalker.com/depends22_x64.zip"
+          $downloadPath = "depends22_x64.zip"
+          $extractPath = "C:\Users\runneradmin\AppData\Local\Nuitka\Nuitka\Cache\downloads\depends\x86_64"
+          
+          # Create directories if they don't exist
+          New-Item -Path $extractPath -ItemType Directory -Force
+          
+          # Download the file
+          Invoke-WebRequest -Uri $dependsUrl -OutFile $downloadPath
+          
+          # Extract the archive
+          Expand-Archive -Path $downloadPath -DestinationPath $extractPath -Force
+          
+          # Verify files were extracted
+          Get-ChildItem -Path $extractPath
+      - name: Build with Nuitka
+        shell: cmd
+        run: |
+          python -m nuitka PalindromeGame.py --standalone --onefile --follow-imports --enable-plugin=pyqt6 --output-dir=build --windows-console-mode=disable --assume-yes-for-downloads --include-data-file=palindromes.json=palindromes.json
+      - name: Upload .exe as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PalindromeGame-Windows
+          path: build/PalindromeGame.exe
+      - name: Upload to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/PalindromeGame.exe
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+      - name: Verify file path
+        run: |
+          find .
+          if [ -f "PalindromeGame.py" ]; then
+              echo "File exists"
+          else
+              echo "File does not exist"
+              exit 1
+          fi
+          if [ -f "palindromes.json" ]; then
+              echo "palindromes.json exists"
+          else
+              echo "palindromes.json does not exist"
+              exit 1
+          fi
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y patchelf desktop-file-utils libgirepository1.0-dev libfuse2 imagemagick
+          pip install nuitka pyqt6 matplotlib nltk pandas requests
+      - name: Build with Nuitka
+        run: |
+          python -m nuitka PalindromeGame.py --standalone --onefile --enable-plugin=pyqt6 --output-dir=build --follow-imports --assume-yes-for-downloads --include-data-file=palindromes.json=palindromes.json
+      - name: Verify build output
+        run: |
+          ls -la build/
+      - name: Download and extract appimagetool
+        run: |
+          wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+          ./appimagetool-x86_64.AppImage --appimage-extract
+      - name: Create AppDir structure
+        run: |
+          # Create basic structure
+          mkdir -p AppDir/usr/bin
+          cp build/PalindromeGame.bin AppDir/usr/bin/palindromegame
+          chmod +x AppDir/usr/bin/palindromegame
+          
+          # Copy palindromes.json to AppDir
+          cp palindromes.json AppDir/palindromes.json
+          
+          # Create AppRun script
+          cat > AppDir/AppRun << 'EOF'
+          #!/bin/bash
+          HERE="$(dirname "$(readlink -f "${0}")")"
+          exec "$HERE/usr/bin/palindromegame" "$@"
+          EOF
+          chmod +x AppDir/AppRun
+          
+          # Create desktop entry in root directory
+          cat > AppDir/palindromegame.desktop << EOF
+          [Desktop Entry]
+          Name=Palindromegame
+          Exec=palindromegame
+          Icon=palindromegame
+          Type=Application
+          Categories=Utility;
+          EOF
+          
+          # Copy icon (assuming palindromegame.png exists in assets/)
+          cp assets/palindromegame.png AppDir/palindromegame.png || echo "Icon not found, using placeholder"
+          
+          # Debug: List the AppDir structure to verify
+          find AppDir -type f | sort
+      - name: Create AppImage using extracted appimagetool
+        run: |
+          ./squashfs-root/AppRun AppDir PalindromeGame-x86_64.AppImage || exit 1
+      - name: Upload AppImage as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PalindromeGame-Linux
+          path: PalindromeGame-x86_64.AppImage
+      - name: Upload to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: PalindromeGame-x86_64.AppImage
