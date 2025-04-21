@@ -142,4 +142,16 @@ jobs:
           EOF
           cp assets/palindromegame.png AppDir/palindromegame.png
           find AppDir -type f | sort
-      - name: Create AppImage using extracted appim
+      - name: Create AppImage using extracted appimagetool
+        run: |
+          ./squashfs-root/AppRun AppDir PalindromeGame-x86_64.AppImage || exit 1
+      - name: Upload AppImage as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PalindromeGame-Linux
+          path: PalindromeGame-x86_64.AppImage
+      - name: Upload to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: PalindromeGame-x86_64.AppImage
