@@ -34,7 +34,7 @@ jobs:
           python-version: '3.12'
       - name: Install dependencies
         run: |
-          pip install nuitka pyqt6 matplotlib nltk pandas requests
+          pip install nuitka pyqt6 matplotlib nltk pandas requests appdirs
       - name: Download dependency walker manually
         shell: powershell
         run: |
@@ -96,7 +96,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y patchelf desktop-file-utils libgirepository1.0-dev libfuse2 imagemagick
-          pip install nuitka pyqt6 matplotlib nltk pandas requests
+          pip install nuitka pyqt6 matplotlib nltk pandas requests appdirs
       - name: Build with Nuitka
         run: |
           python -m nuitka PalindromeGame.py --include-data-files=palindromes.json=palindromes.json --standalone --onefile --enable-plugin=pyqt6 --output-dir=build --follow-imports --assume-yes-for-downloads --include-data-file=palindromes.json=palindromes.json
@@ -114,37 +114,28 @@ jobs:
           mkdir -p AppDir/usr/bin
           cp build/PalindromeGame.bin AppDir/usr/bin/palindromegame
           chmod +x AppDir/usr/bin/palindromegame
-          
-          # Copy palindromes.json to AppDir
           cp palindromes.json AppDir/palindromes.json
-          
-          # Create AppRun script
           cat > AppDir/AppRun << 'EOF'
           #!/bin/bash
           HERE="$(dirname "$(readlink -f "${0}")")"
-          exec "$HERE/usr/bin/palindromegame" "$@"
+          echo "Running palindromegame from $HERE/usr/bin/palindromegame" >&2
+          exec "$HERE/usr/bin/palindromegame" "$@" 2> "$HERE/error.log"
           EOF
           chmod +x AppDir/AppRun
-          
-          # Create desktop entry in root directory
           cat > AppDir/palindromegame.desktop << EOF
           [Desktop Entry]
-          Name=Palindromegame
-          Exec=palindromegame
+          Name=PalindromeGame
+          Exec=/usr/bin/palindromegame
           Icon=palindromegame
           Type=Application
           Categories=Utility;
           EOF
-          
-          # Copy icon (check if it exists)
           if [ -f assets/palindromegame.png ]; then
             cp assets/palindromegame.png AppDir/palindromegame.png
           else
             echo "ERROR: Icon 'assets/palindromegame.png' not found!"
             exit 1
           fi
-          
-          # Debug: List the AppDir structure to verify
           find AppDir -type f | sort
       - name: Create AppImage using extracted appimagetool
         run: |
