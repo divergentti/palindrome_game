@@ -56,7 +56,7 @@ jobs:
       - name: Build with Nuitka
         shell: cmd
         run: |
-          python -m nuitka PalindromeGame.py --include-data-files=palindromes.json=palindromes.json --standalone --onefile --follow-imports --enable-plugin=pyqt6 --output-dir=build --windows-console-mode=disable --assume-yes-for-downloads --include-data-file=palindromes.json=palindromes.json
+          python -m nuitka PalindromeGame.py --include-data-files=palindromes.json=palindromes.json --standalone --onefile --follow-imports --enable-plugin=pyqt6 --output-dir=build --windows-console-mode=disable --assume-yes-for-downloads
       - name: Upload .exe as artifact
         uses: actions/upload-artifact@v4
         with:
@@ -69,7 +69,7 @@ jobs:
           files: build/PalindromeGame.exe
 
   build-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04  # Use older base for compatibility
     steps:
       - name: Check out the repository
         uses: actions/checkout@v4
@@ -88,6 +88,12 @@ jobs:
               echo "palindromes.json does not exist"
               exit 1
           fi
+          if [ -f "assets/palindromegame.png" ]; then
+              echo "Icon exists"
+          else
+              echo "Icon does not exist"
+              exit 1
+          fi
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -95,11 +101,15 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y patchelf desktop-file-utils libgirepository1.0-dev libfuse2 imagemagick
+          sudo apt-get install -y patchelf desktop-file-utils libgirepository1.0-dev libfuse2 imagemagick libfreetype6-dev libpng-dev
           pip install nuitka pyqt6 matplotlib nltk pandas requests appdirs
+      - name: Download NLTK data
+        run: |
+          python -c "import nltk; nltk.download('words', download_dir='nltk_data', quiet=True)"
+          ls -R nltk_data
       - name: Build with Nuitka
         run: |
-          python -m nuitka PalindromeGame.py --include-data-files=palindromes.json=palindromes.json --standalone --onefile --enable-plugin=pyqt6 --output-dir=build --follow-imports --assume-yes-for-downloads --include-data-file=palindromes.json=palindromes.json
+          python -m nuitka PalindromeGame.py --include-data-files=palindromes.json=palindromes.json --include-data-dir=nltk_data=nltk_data --standalone --onefile --enable-plugin=pyqt6 --include-qt-plugins=sensible,styles,iconengines,imageformats,platforms --output-dir=build --assume-yes-for-downloads --include-module=appdirs,matplotlib,nltk,pyqt6
       - name: Verify build output
         run: |
           ls -la build/
@@ -110,16 +120,16 @@ jobs:
           ./appimagetool-x86_64.AppImage --appimage-extract
       - name: Create AppDir structure
         run: |
-          # Create basic structure
           mkdir -p AppDir/usr/bin
           cp build/PalindromeGame.bin AppDir/usr/bin/palindromegame
           chmod +x AppDir/usr/bin/palindromegame
           cp palindromes.json AppDir/palindromes.json
+          cp -r nltk_data AppDir/nltk_data
           cat > AppDir/AppRun << 'EOF'
           #!/bin/bash
           HERE="$(dirname "$(readlink -f "${0}")")"
           echo "Running palindromegame from $HERE/usr/bin/palindromegame" >&2
-          exec "$HERE/usr/bin/palindromegame" "$@" 2> "$HERE/error.log"
+          exec "$HERE/usr/bin/palindromegame" "$@" 2> "/tmp/palindromegame_error.log"
           EOF
           chmod +x AppDir/AppRun
           cat > AppDir/palindromegame.desktop << EOF
@@ -130,23 +140,6 @@ jobs:
           Type=Application
           Categories=Utility;
           EOF
-          if [ -f assets/palindromegame.png ]; then
-            cp assets/palindromegame.png AppDir/palindromegame.png
-          else
-            echo "ERROR: Icon 'assets/palindromegame.png' not found!"
-            exit 1
-          fi
+          cp assets/palindromegame.png AppDir/palindromegame.png
           find AppDir -type f | sort
-      - name: Create AppImage using extracted appimagetool
-        run: |
-          ./squashfs-root/AppRun AppDir PalindromeGame-x86_64.AppImage || exit 1
-      - name: Upload AppImage as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: PalindromeGame-Linux
-          path: PalindromeGame-x86_64.AppImage
-      - name: Upload to GitHub Release
-        if: github.event_name == 'release'
-        uses: softprops/action-gh-release@v2
-        with:
-          files: PalindromeGame-x86_64.AppImage
+      - name: Create AppImage using extracted appim
