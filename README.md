@@ -1,8 +1,13 @@
 # Palindrome Game (English Version)
 
-**Last Updated: 21 April 2025**
+**Last Updated: 22 April 2025**
 
 Welcome to the **Palindrome Game**, an interactive application designed to generate, visualize, and play with palindromes in English! This project builds on the insights gained from my previous work on a Finnish palindrome generator ([divergentti/palindrome_generator](https://github.com/divergentti/palindrome_generator)) and extends the concept to English, incorporating a machine learning-inspired approach to generate over 31,000 palindromes using the `initializer.py` script. The game features a PyQt6-based GUI with real-time palindrome validation, scoring, visualization, and feedback to enhance the user experience.
+
+Videos: 
+1. [PalindromeGame version 0.0.1](https://youtu.be/5A3nKrbZ9SQ)
+2. [PalindromeGame in Windows 11](https://youtu.be/s4_XT852RUA)
+ 
 
 ## Table of Contents
 
@@ -49,6 +54,7 @@ To run the game from source, you’ll need:
 - Python 3.8+
 - PyQt6
 - Matplotlib
+- Appdirs
 - NLTK (for `initializer.py`)
 - Pandas (for `initializer.py`)
 - Requests (for `initializer.py`)
@@ -56,10 +62,10 @@ To run the game from source, you’ll need:
 Install the required packages using pip:
 
 ```bash
-pip install PyQt6 matplotlib nltk pandas requests
+pip install PyQt6 matplotlib nltk pandas requests appdirs
 ```
 
-**Note**: If you prefer not to set up a Python environment, you can download pre-built binaries for Windows and Linux from the [GitHub Releases page](#using-pre-built-binaries).
+**Note**: If you prefer not to set up a Python environment, you can download pre-built binaries for Windows and Linux from the [GitHub Releases page](https://github.com/divergentti/palindrome_game/releases).
 
 ### Clone the Repository
 
@@ -98,12 +104,16 @@ The game uses `palindromes.json` from the root directory (`./palindromes.json`) 
 
 For convenience, pre-built binaries for Windows and Linux are available on the [GitHub Releases page](https://github.com/divergentti/palindrome_game/releases). These binaries were created using GitHub Workflows with Nuitka, a Python compiler that produces standalone executables. The binaries include the `palindromes.json` file, so no additional setup is required.
 
+Note for Windows users: As with all binaries compiled using Nuitka, launching the game may trigger a false positive alert from Windows Defender. The warning typically flags it as Program:Win32/Wacapew.C!ml. This is purely a heuristic detection — there is no actual virus in the executable.
+
+The reason for this alert is the lack of a digital signature. While a code signing certificate would prevent such warnings, I have chosen not to invest in one, as this project is open source (MIT license) and I receive no financial compensation for the work.
+
 #### Download and Run
 
 1. Visit the [Releases page](https://github.com/divergentti/palindrome_game/releases) and download the latest release for your operating system:
    - **Windows**: `PalindromeGame.exe`
    - **Linux**: `PalindromeGame-x86_64.AppImage`
-2. Run the executable:
+2. Run the executable (after adjusting the Defender):
    - **Windows**: Double-click `PalindromeGame.exe` or run via command line:
      ```bash
      .\PalindromeGame.exe
@@ -212,6 +222,7 @@ A hybrid model combining ML for word suggestions and logical verification for sy
 
 ## Future Improvements
 
+- **Integrate LLM such as LM Studio, Mistra.ai etc. via API**: have suggestions for words fitting into palindrome.
 - **Advanced ML Model**: Explore reinforcement learning (e.g., reward for symmetry) or transformer-based models to improve palindrome generation.
 - **Enhanced Sense Scoring**: Integrate a more sophisticated semantic analysis (e.g., using NLP models like BERT) to evaluate the "sense" of palindromes.
 - **Cross-Platform Builds**: Improve packaging with PyInstaller or cx_Freeze for Windows and Linux distributions, addressing issues with data folder inclusion.
