@@ -7,7 +7,6 @@ Welcome to the **Palindrome Game**, an interactive application designed to gener
 Videos: 
 1. [PalindromeGame version 0.0.1](https://youtu.be/5A3nKrbZ9SQ)
 2. [PalindromeGame in Windows 11](https://youtu.be/7HxxwZ2sWaU)
- 
 
 ## Table of Contents
 
@@ -22,6 +21,7 @@ Videos:
 - Development Process
 - Generating Palindromes with `initializer.py`
 - Challenges and Observations
+- Version History
 - Future Improvements
 - License
 
@@ -41,9 +41,11 @@ The Palindrome Game allows users to input phrases and check if they form palindr
 - **Real-Time Palindrome Checking**: As you type, the game highlights matching and non-matching characters (green for matches, red for mismatches, blue for the middle character in odd-length palindromes).
 - **Scoring System**: Scores are calculated based on palindrome length and a "sense score" (semantic validity). Bonus points are awarded for known palindromes.
 - **Feedback and Suggestions**: Provides detailed feedback on whether the input is a palindrome, suggests extensions, and shows similar palindromes from the pre-generated dataset.
+- **LLM-Based Word Suggestions**: Integrates with a large language model (via APIs like LM Studio or Mistral.ai) to suggest words that fit into palindromes, enhancing gameplay by guiding players toward valid and meaningful palindromes.
 - **Visualization**: Displays a histogram of palindrome lengths from the pre-generated dataset, with a marker indicating the length of the current input.
 - **Pre-Generated Palindromes**: Includes a dataset of over 31,000 palindromes generated using `initializer.py` from English verbs, nouns, adjectives, and book texts, stored in `palindromes.json` in the root directory.
 - **Menu Options**: Access game instructions, inspect palindromes, visualize distributions, view player stats, and adjust settings (e.g., number of matching palindromes to show).
+- **Player Data Persistence**: Robust saving and loading of player data (total score, playing time, and discovered palindromes) to `players.json`, ensuring stats are preserved across sessions.
 
 ## Installation
 
@@ -57,7 +59,7 @@ To run the game from source, you’ll need:
 - Appdirs
 - NLTK (for `initializer.py`)
 - Pandas (for `initializer.py`)
-- Requests (for `initializer.py`)
+- Requests (for LLM integrations and `initializer.py`)
 
 Install the required packages using pip:
 
@@ -83,11 +85,21 @@ import nltk
 nltk.download('wordnet')
 ```
 
+### Configure LLM API (for Word Suggestions)
+
+To enable LLM-based word suggestions, configure the API key for your chosen LLM provider (e.g., LM Studio, Mistral.ai). Update the settings in `settings.json` or provide the API key via environment variables:
+
+```bash
+export LLM_API_KEY=<your_api_key>
+```
+
+Refer to the provider’s documentation for setup details.
+
 ## Usage
 
 ### Running the Game
 
-1. Ensure all dependencies are installed.
+1. Ensure all dependencies are installed and LLM API is configured (if using word suggestions).
 2. Run the main game script from the root directory:
 
    ```bash
@@ -96,9 +108,10 @@ nltk.download('wordnet')
 3. The GUI will open, allowing you to:
    - Enter a phrase in the input field to check if it’s a palindrome.
    - View real-time highlighting, scores, and feedback.
+   - Use LLM-based word suggestions to extend palindromes (via the feedback area or a dedicated button).
    - Explore the menu options for instructions, stats, and settings.
 
-The game uses `palindromes.json` from the root directory (`./palindromes.json`) at runtime.
+The game uses `palindromes.json` from the root directory (`./palindromes.json`) and saves player data to `players.json` at runtime.
 
 ### Using Pre-Built Binaries
 
@@ -125,7 +138,7 @@ The reason for this alert is the lack of a digital signature. While a code signi
      ```
 3. The game will launch with all dependencies and the `palindromes.json` file included, no Python installation required.
 
-**Note**: If you generate new palindromes using `initializer.py`, the updated `palindromes.json` will already be bundled in the binary. To use a different dataset, you’ll need to rebuild the binary with the updated `palindromes.json` file.
+**Note**: If you generate new palindromes using `initializer.py`, the updated `palindromes.json` will already be bundled in the binary. To use a different dataset or enable LLM suggestions, you’ll need to rebuild the binary with the updated `palindromes.json` file and API configuration.
 
 ### Generating New Palindromes
 
@@ -182,7 +195,7 @@ The game logic, implemented in `PalindromeGame.py` (in the root directory), incl
 - **Input Handling**: Uses a `QTextEdit` field for input, with a height of 40 pixels to save space.
 - **Highlighting**: Colors characters in real-time (green for matching pairs, red for mismatches, blue for the middle character in odd-length palindromes).
 - **Scoring**: Calculates a score based on length and a dummy "sense score" (semantic validity). Known palindromes receive a +5 bonus.
-- **Feedback**: Displays whether the input is a palindrome, suggests extensions, and shows similar palindromes from the dataset.
+- **Feedback**: Displays whether the input is a palindrome, suggests extensions, and shows similar palindromes from the dataset. LLM-based suggestions provide contextually relevant words to form valid palindromes.
 - **Visualization**: A Matplotlib histogram shows the length distribution of pre-generated palindromes, with a marker for the current input’s length.
 
 ## Generating Palindromes with `initializer.py`
@@ -211,20 +224,36 @@ Example palindromes generated:
 - **Random Combinations**: Randomly combining words rarely produces palindromes, confirming the need for a structured approach.
 - **Sense Validation**: Ensuring palindromes are meaningful (e.g., using real words) required extensive vocabulary checks.
 
+### Player Data Saving Bug (Fixed in v0.0.2)
+
+A critical bug in version 0.0.1 caused player data (total score, playing time, and discovered palindromes) to be reset each time the game was launched. This was due to a global `players = {}` assignment that inadvertently cleared the loaded `players.json` data before the player name check. The issue was resolved in version 0.0.2 by removing the problematic assignment and improving the save logic to merge existing data, ensuring robust persistence across sessions.
+
 ### Hybrid Approach
 
-A hybrid model combining ML for word suggestions and logical verification for symmetry proved more effective. The `initializer.py` script uses this approach by suggesting extensions and validating them against word lists.
+A hybrid model combining ML for word suggestions and logical verification for symmetry proved more effective. The `initializer.py` script uses this approach by suggesting extensions and validating them against word lists. The new LLM-based suggestion feature in version 0.0.2 enhances this by leveraging advanced language models to propose contextually relevant words.
 
 ### GUI Development
 
 - **Highlighting Issue**: Initially used `QLineEdit` for input, but it didn’t support HTML-based highlighting. Reverted to `QTextEdit` with a reduced height (40 pixels) to maintain space efficiency.
 - **Import Errors**: Fixed issues with PyQt6 (`QAction` moved to `QtGui`) and Matplotlib (`backend_qt6agg` for PyQt6 compatibility).
 
+## Version History
+
+### Version 0.0.2 (22 April 2025)
+
+- **Fixed Player Data Saving**: Resolved a critical bug where player data (total score, playing time, and discovered palindromes) was reset due to a global `players = {}` assignment. The fix ensures `players.json` is loaded and saved correctly, preserving stats across sessions.
+- **Added LLM-Based Word Suggestions**: Integrated a large language model (via APIs like LM Studio or Mistral.ai) to suggest words that fit into palindromes. This feature enhances gameplay by guiding players toward valid and meaningful palindromes, accessible via the feedback area or a dedicated button.
+- **Improved Save Logic**: Updated `save_players` to merge existing data in `players.json`, preventing accidental overwrites of other players’ stats.
+
+### Version 0.0.1 (Initial Release)
+
+- Initial release with PyQt6 GUI, real-time palindrome checking, scoring, visualization, and pre-generated dataset of over 31,000 palindromes.
+- Basic player data saving to `players.json`, with issues in persistence due to global variable bug.
+
 ## Future Improvements
 
-- **Integrate LLM such as LM Studio, Mistra.ai etc. via API**: have suggestions for words fitting into palindrome.
-- **Advanced ML Model**: Explore reinforcement learning (e.g., reward for symmetry) or transformer-based models to improve palindrome generation.
 - **Enhanced Sense Scoring**: Integrate a more sophisticated semantic analysis (e.g., using NLP models like BERT) to evaluate the "sense" of palindromes.
+- **Advanced LLM Integration**: Expand LLM capabilities to generate entire palindrome phrases or provide real-time coaching for complex palindromes.
 - **Cross-Platform Builds**: Improve packaging with PyInstaller or cx_Freeze for Windows and Linux distributions, addressing issues with data folder inclusion.
 - **Localization**: Add support for other languages beyond English.
 - **Game Features**: Introduce levels, challenges, or a multiplayer mode to enhance engagement.

@@ -27,6 +27,10 @@ import matplotlib
 import appdirs
 import shutil
 
+debug_files = False
+debug_gui = False
+debug_llm = False
+
 
 def get_data_dir():
     """Get platform-specific data directory for the app."""
@@ -42,6 +46,7 @@ def get_data_dir():
 DATA_DIR = get_data_dir()
 PALINDROMES_FILE = os.path.join(DATA_DIR, "palindromes.json")
 PLAYERS_FILE = os.path.join(DATA_DIR, "players.json")
+SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
 
 # For bundled data (Nuitka onefile)
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
@@ -49,6 +54,8 @@ if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
 else:
     BUNDLE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_PALINDROMES_FILE = os.path.join(BUNDLE_DIR, "palindromes.json")
+DEFAULT_PLAYERS_FILE = os.path.join(BUNDLE_DIR, "players.json")
+DEFAULT_SETTINGS_FILE = os.path.join(BUNDLE_DIR, "settings.json")
 
 # Load or initialize palindromes
 try:
@@ -63,7 +70,8 @@ except (FileNotFoundError, json.JSONDecodeError):
         # Copy to user directory for future updates
         shutil.copyfile(DEFAULT_PALINDROMES_FILE, PALINDROMES_FILE)
     except Exception as e:
-        print(f"Error loading palindromes: {e}")
+        if debug_files:
+            print(f"Error loading palindromes: {e}")
         pre_generated = []
         reverse_pairs = []
 
@@ -71,25 +79,64 @@ except (FileNotFoundError, json.JSONDecodeError):
 try:
     with open(PLAYERS_FILE, 'r') as f:
         players = json.load(f)
+    # Normalize player keys to lowercase
+    players = {k.lower(): v for k, v in players.items()}
 except (FileNotFoundError, json.JSONDecodeError):
-    players = {}
+    if debug_files:
+        print(FileNotFoundError, json.JSONDecodeError)
+    try:
+        with open(DEFAULT_PLAYERS_FILE, 'r') as f:
+            players = json.load(f)
+        # Normalize player keys to lowercase
+        players = {k.lower(): v for k, v in players.items()}
+        shutil.copyfile(DEFAULT_PLAYERS_FILE, PLAYERS_FILE)
+    except Exception as e:
+        if debug_files:
+            print(f"Error loading players: {e}")
+        players = {}
 
-# Update save_players() function
+if debug_files:
+    print(f"Loaded players: {players}")
+
+# Load settings
+try:
+    with open(SETTINGS_FILE, 'r') as f:
+        settings = json.load(f)
+except (FileNotFoundError, json.JSONDecodeError):
+    try:
+        with open(DEFAULT_SETTINGS_FILE, 'r') as f:
+            settings = json.load(f)
+        shutil.copyfile(DEFAULT_SETTINGS_FILE, SETTINGS_FILE)
+    except Exception as e:
+        if debug_files:
+            print(f"Error loading settings: {e}")
+        settings = {}
+
 def save_players():
     """Save players to platform-specific directory"""
-    with open(PLAYERS_FILE, 'w') as f:
-        json.dump(players, f, indent=2)
+    try:
+        existing_players = {}
+        if os.path.exists(PLAYERS_FILE):
+            with open(PLAYERS_FILE, 'r') as f:
+                existing_players = json.load(f)
+        normalized_players = {k.lower(): v for k, v in players.items()}
+        existing_players.update(normalized_players)
+        with open(PLAYERS_FILE, 'w') as f:
+            json.dump(existing_players, f, indent=2)
+        if debug_files:
+            print(f"Saved players: {existing_players}")
+    except Exception as e:
+        if debug_files:
+            print(f"Error saving players: {e}")
 
-
-debug_gui = False
 
 if debug_gui:
     print(f"Matplotlib version: {matplotlib.__version__}, Backend: {matplotlib.get_backend()}")
-matplotlib.use('QtAgg')  # Ensure Qt6-compatible backend
+matplotlib.use('QtAgg')
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QLineEdit,
-    QPushButton, QLabel, QTextEdit, QDialog, QTableWidget,
-    QTableWidgetItem, QMessageBox, QDialogButtonBox, QLCDNumber, QProgressBar, QInputDialog, QFrame
+    QPushButton, QLabel, QTextEdit, QDialog, QTableWidget, QFormLayout,
+    QTableWidgetItem, QMessageBox, QDialogButtonBox, QLCDNumber, QProgressBar, QInputDialog, QFrame, QComboBox
 )
 from PyQt6.QtGui import QAction, QFont
 from PyQt6.QtCore import QTimer, QElapsedTimer, Qt
@@ -116,21 +163,18 @@ except ImportError:
 # Enable Qt debugging
 os.environ["QT_LOGGING_RULES"] = "qt6.*=true"
 
-
+# Download NLTK words if not already downloaded
 NLTK_DATA_DIR = os.path.join(DATA_DIR, 'nltk_data')
 os.makedirs(NLTK_DATA_DIR, exist_ok=True)
-
-# Download NLTK words if not already downloaded
 nltk.data.path = [NLTK_DATA_DIR]
 os.environ['NLTK_DATA'] = NLTK_DATA_DIR
 
-
 try:
     nltk.data.find('corpora/words')
-    if debug_gui:
+    if debug_files:
         print("NLTK words already downloaded")
 except LookupError:
-    if debug_gui:
+    if debug_files:
         print(f"Downloading NLTK words to {NLTK_DATA_DIR}")
     nltk.download('words', download_dir=NLTK_DATA_DIR, quiet=True)
 
@@ -138,8 +182,241 @@ from nltk.corpus import words
 english_words = set(words.words())
 reverse_pairs = [(w, w[::-1]) for w in english_words if w[::-1] in english_words and w < w[::-1]]
 
-GAME_VERSION = "Ver. 0.0.1 - 21.04.2025"
-players = {}
+GAME_VERSION = "Ver. 0.0.2 - 22.04.2025"
+
+class LargeLanguageModelsAPI:
+    def __init__(self, query_prompt, system_prompt=None, max_tokens=200, backend="lm_studio", temperature=0.7, conversation=None):
+        self.system_prompt = system_prompt or (
+            "You are a professional palindrome innovator. "
+            "Provide concise suggestions for words that fit into the user's palindrome."
+            "Response must contain only words separated by commas."
+            "Do not repeat the system prompt or provide lengthy explanations."
+        )
+        self.query_prompt = query_prompt
+        self.max_tokens = max_tokens
+        self.backend = backend
+        self.temperature = temperature
+        self.conversation = conversation
+
+    def query(self):
+        if not self.conversation:
+            return "Error: No conversation instance provided."
+
+        if self.backend == "lm_studio":
+            return self._query_lm_studio()
+        elif self.backend == "mistral":
+            return self._query_mistral()
+        elif self.backend == "openai":
+            return self._query_openai()
+        else:# Download NLTK words if not already downloaded
+            return f"Unsupported backend selected: {self.backend}"
+
+    def _build_prompt(self):
+        return f"{self.system_prompt}\n\nUser prompt:\n{self.query_prompt}"
+
+    def _query_lm_studio(self):
+        return self.conversation.query_lm_studio(
+            prompt=self._build_prompt()
+        )
+
+    def _query_mistral(self):
+        return self.conversation.query_mistral(
+            prompt=self._build_prompt(),
+            max_tokens=self.max_tokens,
+            temperature=self.temperature
+        )
+
+    def _query_openai(self):
+        return self.conversation.query_openai(
+            system_prompt=self.system_prompt,
+            user_prompt=self.query_prompt,
+            max_tokens=self.max_tokens,
+            temperature=self.temperature
+        )
+
+class LLMConversation:
+    def __init__(self, lm_studio_url=None, mistral_api_key=None, openai_api_key=None):
+        self.lm_studio_url = lm_studio_url or "http://localhost:1234/v1/chat/completions"
+        self.mistral_api_key = mistral_api_key
+        self.openai_api_key = openai_api_key
+
+    def query_lm_studio(self, prompt):
+        import requests
+        payload = {
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 200,
+        "temperature": 0.7,
+        "stream": False  }
+        try:
+            response = requests.post(self.lm_studio_url, json=payload)
+            response.raise_for_status()
+            if debug_llm:
+                print(response.json().get("choices", [{}])[0].get("message", {}).get("content", "").strip())
+            return response.json().get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        except Exception as e:
+            if debug_llm:
+                print(f"LM Studio error: {str(e)}")
+            return f"LM Studio error: {str(e)}"
+
+    def query_mistral(self, prompt, max_tokens=200, temperature=0.7):
+        import requests
+        headers = {
+            "Authorization": f"Bearer {self.mistral_api_key}",
+            "Content-Type": "application/json",
+            "mistral-version": "2024-05-10"
+        }
+        payload = {
+            "model": "mistral-large-latest",
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+            "temperature": temperature
+        }
+        try:
+            response = requests.post("https://api.mistral.ai/v1/chat/completions", json=payload, headers=headers)
+            response.raise_for_status()
+            content = response.json()["choices"][0]["message"]["content"].strip()
+            if debug_llm:
+                print(content)
+
+            suggestions = content.replace("<ul>", "").replace("</ul>", "").replace("<li>", "").replace("</li>", ", ")
+            suggestions = suggestions.strip(", ")
+            return suggestions
+        except Exception as e:
+            if debug_llm:
+                print(f"Mistral error: {str(e)}")
+            return f"Mistral error: {str(e)}"
+
+    def query_openai(self, system_prompt, user_prompt, max_tokens=200, temperature=0.7):
+        import openai
+        openai.api_key = self.openai_api_key
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_tokens=max_tokens,
+                temperature=temperature
+            )
+            content = response["choices"][0]["message"]["content"].strip()
+            if debug_llm:
+                print(content)
+
+            suggestions = content.replace("<ul>", "").replace("</ul>", "").replace("<li>", "").replace("</li>", ", ")
+            suggestions = suggestions.strip(", ")
+            return suggestions
+        except Exception as e:
+            if debug_llm:
+                print(f"OpenAI error: {str(e)}")
+            return f"OpenAI error: {str(e)}"
+
+
+class SettingsManager:
+    def __init__(self):
+        self.settings = {}
+        if os.path.exists(SETTINGS_FILE):
+            with open(SETTINGS_FILE, "r") as f:
+                self.settings = json.load(f)
+
+    def get_conversation(self):
+        return LLMConversation(
+            lm_studio_url=self.settings.get("lm_studio_url"),
+            mistral_api_key=self.settings.get("mistral_api_key"),
+            openai_api_key=self.settings.get("openai_api_key")
+        )
+
+    def get_backend(self):
+        return self.settings.get("backend", "lm_studio")
+
+
+class SettingsDialog(QDialog):
+    """Dialog for selecting LLM backend and entering API keys."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("LLM Settings")
+        self.setGeometry(200, 200, 500, 300)
+        layout = QVBoxLayout()
+
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f5f5f7;
+            }
+            QLineEdit, QComboBox {
+                padding: 8px;
+                border: 1px solid #cccccc;
+                border-radius: 4px;
+                font-size: 12pt;
+            }
+            QPushButton {
+                background-color: #4a86e8;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-size: 12pt;
+            }
+            QPushButton:hover {
+                background-color: #3a76d8;
+            }
+        """)
+
+        form_layout = QFormLayout()
+
+        self.backend_combo = QComboBox()
+        self.backend_combo.addItems(["lm_studio", "mistral", "openai"])
+        self.backend_combo.currentTextChanged.connect(self.update_visibility)
+        form_layout.addRow("Backend:", self.backend_combo)
+
+        self.lm_studio_url_input = QLineEdit()
+        form_layout.addRow("LM Studio URL:", self.lm_studio_url_input)
+
+        self.mistral_key_input = QLineEdit()
+        self.mistral_key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        form_layout.addRow("Mistral API Key:", self.mistral_key_input)
+
+        self.openai_key_input = QLineEdit()
+        self.openai_key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        form_layout.addRow("OpenAI API Key:", self.openai_key_input)
+
+        layout.addLayout(form_layout)
+
+        save_button = QPushButton("Save Settings")
+        save_button.clicked.connect(self.save_settings)
+        layout.addWidget(save_button)
+
+        self.setLayout(layout)
+        self.load_settings()
+        self.update_visibility()
+
+    def update_visibility(self):
+        backend = self.backend_combo.currentText()
+        self.lm_studio_url_input.setVisible(backend == "lm_studio")
+        self.mistral_key_input.setVisible(backend == "mistral")
+        self.openai_key_input.setVisible(backend == "openai")
+
+    def load_settings(self):
+        if os.path.exists(SETTINGS_FILE):
+            with open(SETTINGS_FILE, "r") as f:
+                settings = json.load(f)
+                self.backend_combo.setCurrentText(settings.get("backend", "lm_studio"))
+                self.lm_studio_url_input.setText(settings.get("lm_studio_url", ""))
+                self.mistral_key_input.setText(settings.get("mistral_api_key", ""))
+                self.openai_key_input.setText(settings.get("openai_api_key", ""))
+
+    def save_settings(self):
+        settings = {
+            "backend": self.backend_combo.currentText(),
+            "lm_studio_url": self.lm_studio_url_input.text(),
+            "mistral_api_key": self.mistral_key_input.text(),
+            "openai_api_key": self.openai_key_input.text()
+        }
+        with open(SETTINGS_FILE, "w") as f:
+            json.dump(settings, f, indent=2)
+        QMessageBox.information(self, "Saved", "Settings saved successfully.")
+        self.accept()
+
 
 class Inspector:
     """Inspects if user input is a palindrome and calculates its 'make sense' score."""
@@ -182,7 +459,7 @@ class GameInstructionsDialog(QDialog):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Game Instructions")
-        self.setGeometry(100, 100, 500, 400)
+        self.setGeometry(100, 100, 500, 600)
         layout = QVBoxLayout()
         self.setStyleSheet("""
             QDialog {
@@ -201,20 +478,23 @@ class GameInstructionsDialog(QDialog):
         instructions.setReadOnly(True)
         instructions.setText(
             "Welcome to the Palindrome Game!\n\n"
-            "How to play:\n"
-            "- Type in the input field (no special characters allowed)\n"
-            "- When your text exceeds 5 characters, it's checked for being a palindrome\n"
-            "- Earn points for valid palindromes based on:\n"
-            "  • Length\n"
-            "  • Meaningfulness ('make sense' percentage)\n"
-            "  • +5 bonus for known palindromes\n"
-            "- New palindromes are saved for future games\n\n"
-            "Scoring details:\n"
-            "- Base Score = (length × 'make sense' percentage) / 100\n"
-            "- Known palindromes earn +5 bonus points\n\n"
-            "Visual feedback:\n"
+            "How to Play:\n"
+            "1. Type your text in the input field (special characters are not allowed).\n"
+            "2. Once your text exceeds 5 characters, it will be checked to see if it's a palindrome.\n"
+            "3. Earn points for valid palindromes based on:\n"
+            "   - Length of the palindrome\n"
+            "   - Meaningfulness (how much 'sense' it makes)\n"
+            "   - +5 bonus points for known palindromes\n"
+            "4. New palindromes will be saved for future games.\n\n"
+            "Scoring Details:\n"
+            "- Base Score: (Length × Meaningfulness Percentage) / 100\n"
+            "- Bonus Points: +5 for known palindromes\n\n"
+            "Visual Feedback:\n"
             "- Symmetry and progress indicators\n"
-            "- Light blue character marks the middle point (mirror from here)\n\n"
+            "- A light blue character marks the middle point (mirror from here)\n\n"
+            "Setting Up LLM:\n"
+            "- Install LM Studio and download the appropriate model, or\n"
+            "- Obtain API keys from a provider (e.g., OpenAI or Mistral.ai)\n\n"
             "Enjoy creating word art!\n\n"
             "(C) 2025 - Jari Hiltunen - Licensed under MIT"
         )
@@ -244,8 +524,6 @@ class GameInstructionsDialog(QDialog):
 
 
 class PlayerName(QDialog):
-    """Dialog to select or create a player."""
-
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Who is playing today?")
@@ -273,16 +551,13 @@ class PlayerName(QDialog):
                 background-color: #3a76d8;
             }
         """)
-
         welcome_label = QLabel("Welcome to the Palindrome Game!")
         welcome_label.setStyleSheet("font-size: 14pt; font-weight: bold; margin-bottom: 10px;")
         welcome_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(welcome_label)
-
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("Enter your name")
         layout.addWidget(self.name_input)
-
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
@@ -290,7 +565,14 @@ class PlayerName(QDialog):
         self.setLayout(layout)
 
     def get_player_name(self):
-        return self.name_input.text().strip()
+        name = self.name_input.text().strip().lower()
+        if not name or not name.isalnum():
+            if debug_files:
+                print(f"PlayerName.get_player_name: Invalid name '{name}'")
+            return ""
+        if debug_files:
+            print(f"PlayerName.get_player_name: returning '{name}'")
+        return name
 
 
 class InspectPalindromesDialog(QDialog):
@@ -470,10 +752,9 @@ class PalindromeVisualizationDialog(QDialog):
 
 
 class PlayerStatsDialog(QDialog):
-    """Dialog to display player statistics."""
-
     def __init__(self, player_name, player_data):
         super().__init__()
+        print(f"PlayerStatsDialog: player_name={player_name}, player_data={player_data}")
         self.setWindowTitle(f"Stats for {player_name}")
         self.setGeometry(100, 100, 500, 400)
         layout = QVBoxLayout()
@@ -504,14 +785,10 @@ class PlayerStatsDialog(QDialog):
                 background-color: #3a76d8;
             }
         """)
-
-        # Header with player name
         player_header = QLabel(f"Player: {player_name}")
         player_header.setStyleSheet("font-size: 18pt; font-weight: bold; margin-bottom: 15px;")
         player_header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(player_header)
-
-        # Stats section
         stats_frame = QFrame()
         stats_frame.setFrameShape(QFrame.Shape.StyledPanel)
         stats_frame.setStyleSheet("""
@@ -522,29 +799,26 @@ class PlayerStatsDialog(QDialog):
             }
         """)
         stats_layout = QVBoxLayout(stats_frame)
-
-        score_label = QLabel(f"Total Score: {player_data['total_score']:.2f}")
+        score_label = QLabel(f"Total Score: {player_data.get('total_score', 0.0):.2f}")
         stats_layout.addWidget(score_label)
-
-        time_label = QLabel(f"Playing Time: {player_data['playing_time'] / 3600:.2f} hours")
+        playing_time = player_data.get('playing_time', 0)
+        if playing_time < 60:
+            time_label = QLabel(f"Playing Time: {playing_time:.2f} seconds")
+        else:
+            time_label = QLabel(f"Playing Time: {playing_time / 3600:.2f} hours")
         stats_layout.addWidget(time_label)
-
         layout.addWidget(stats_frame)
-
-        # Palindromes section
         palindromes_label = QLabel("New Palindromes Found:")
         palindromes_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
         layout.addWidget(palindromes_label)
-
         palindromes_list = QTextEdit()
         palindromes_list.setReadOnly(True)
-        palindromes_list.setText("\n".join(player_data['new_palindromes']))
+        palindromes_text = "\n".join(player_data.get('new_palindromes', [])) or "No new palindromes found."
+        palindromes_list.setText(palindromes_text)
         layout.addWidget(palindromes_list)
-
         close_button = QPushButton("Close")
         close_button.clicked.connect(self.accept)
         layout.addWidget(close_button)
-
         self.setLayout(layout)
 
 
@@ -646,6 +920,10 @@ class MainWindow(QMainWindow):
         num_matches_action = QAction("Set Number of Matching Palindromes", self)
         num_matches_action.triggered.connect(self.set_num_matches)
         settings_menu.addAction(num_matches_action)
+
+        settings_action = QAction("LLM Settings", self)
+        settings_action.triggered.connect(self.show_llm_settings)
+        settings_menu.addAction(settings_action)
 
         # Central widget
         central_widget = QWidget()
@@ -806,6 +1084,9 @@ class MainWindow(QMainWindow):
             }
         """)
         layout.addWidget(self.feedback_area)
+        self.llm_button = QPushButton("Ask LLM for Feedback")
+        self.llm_button.clicked.connect(self.ask_llm_feedback)
+        layout.addWidget(self.llm_button)
 
         # Divider
         divider = QFrame()
@@ -826,6 +1107,10 @@ class MainWindow(QMainWindow):
         self.canvas = FigureCanvas(self.fig)
         layout.addWidget(self.canvas)
         self.update_visualization()
+
+    def show_llm_settings(self):
+        dialog = SettingsDialog(self)
+        dialog.exec()
 
     def _update_highlighting(self):
         """Update text highlighting for the input field."""
@@ -1007,8 +1292,12 @@ class MainWindow(QMainWindow):
             else:
                 total_score = length * sense_score
                 pre_generated.append(text)
+                if debug_files:
+                    print(f"Appended palindrome {text}")
                 with open(PALINDROMES_FILE, 'w') as f:
                     json.dump(pre_generated, f)
+                    if debug_files:
+                        print(f"File {PALINDROMES_FILE} saved.")
                 self.player["new_palindromes"].append(text)
                 feedback = (
                     f"<b>SUCCESS!</b> '{text}' is a <b>new palindrome</b>!<br>"
@@ -1086,6 +1375,61 @@ class MainWindow(QMainWindow):
         self.check_timer.start(500)
         self.update_visualization()
 
+    def ask_llm_feedback(self):
+        """Ask the selected LLM for palindrome suggestions."""
+        user_input = self.input_field.toPlainText().strip()
+        if len(user_input) <= 3:
+            self.feedback_area.append("<i>Enter more text before asking LLM.</i>")
+            return
+
+        self.llm_button.setEnabled(False)
+        self.llm_button.setText("Waiting...")
+
+        try:
+            settings = SettingsManager()
+            conversation = settings.get_conversation()
+            backend = settings.get_backend()
+
+            llm_api = LargeLanguageModelsAPI(
+                query_prompt=user_input,
+                conversation=conversation,
+                backend=backend
+            )
+
+            response = llm_api.query()
+
+            # Reset button
+            self.llm_button.setEnabled(True)
+            self.llm_button.setText("Ask LLM for Suggestions")
+
+            if not response:
+                self.feedback_area.append("<i>No response from LLM.</i>")
+                return
+
+            suggestions = self._parse_llm_suggestions(response)
+            if suggestions:
+                self.feedback_area.append("<b>LLM Suggestions:</b>")
+                for s in suggestions:
+                    self.feedback_area.append(f" {s}")
+            else:
+                self.feedback_area.append(f"<b>LLM Response:</b> {response}")
+
+        except Exception as e:
+            self.feedback_area.append(f"<span style='color: red;'>LLM error: {str(e)}</span>")
+            self.llm_button.setEnabled(True)
+            self.llm_button.setText("Ask LLM for Feedback")
+
+    def _parse_llm_suggestions(self, response: str) -> list[str]:
+        """Try to extract a list of suggestions from LLM response text."""
+        lines = response.splitlines()
+        suggestions = []
+
+        for line in lines:
+            line = line.strip("-•*1234567890. \t")  # Remove bullet/list characters
+            if len(line.split()) >= 2 and len(line) > 5:
+                suggestions.append(line.strip())
+        return suggestions
+
     def show_instructions(self):
         dialog = GameInstructionsDialog()
         dialog.exec()
@@ -1099,6 +1443,8 @@ class MainWindow(QMainWindow):
         dialog.exec()
 
     def show_player_stats(self):
+        if debug_gui:
+            print(f"show_player_stats: player_name={self.player_name}, player_data={self.player}")
         dialog = PlayerStatsDialog(self.player_name, self.player)
         dialog.exec()
 
@@ -1109,31 +1455,59 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         elapsed = self.timer.elapsed() / 1000
+        # Update playing_time in self.player
+        original_time = self.player["playing_time"]
         self.player["playing_time"] += elapsed
-        save_players()
+        # Update global players dictionary with the latest self.player data
+        players[self.player_name] = {
+            "total_score": self.player.get("total_score", 0.0),
+            "playing_time": self.player["playing_time"],
+            "new_palindromes": self.player.get("new_palindromes", [])
+        }
+        if debug_files:
+            print(
+                f"Closing app - Adding {elapsed:.2f} seconds to player time "
+                f"(was {original_time:.2f}, now {self.player['playing_time']:.2f})"
+            )
+        try:
+            save_players()
+            if debug_files:
+                print(f"Players data saved successfully to {PLAYERS_FILE}")
+        except Exception as e:
+            if debug_files:
+                print(f"Error saving players data: {e}")
         super().closeEvent(event)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-
-    # Set application-wide font
     app_font = QFont("Arial", 11)
     QApplication.setFont(app_font)
+
+    if debug_files:
+        print(f"Before PlayerName dialog: players={players}")
 
     player_dialog = PlayerName()
     if player_dialog.exec() == QDialog.DialogCode.Accepted:
         player_name = player_dialog.get_player_name()
+        if debug_files:
+            print(f"After PlayerName dialog: player_name='{player_name}', players={players}")
         if player_name:
-            # If player doesn't exist, create a new entry
+            # If player doesn't exist, create a new entry and save
             if player_name not in players:
                 players[player_name] = {"total_score": 0.0, "playing_time": 0, "new_palindromes": []}
-            save_players()  # Save the new player to players.json
+                if debug_files:
+                    print(f"Created new player: {player_name}")
+                save_players()  # Save only for new players
+            else:
+                if debug_files:
+                    print(f"Using existing player: {player_name}, data={players[player_name]}")
             # Start the game with the player's data
+            print(f"Passing to MainWindow: player_name={player_name}, player_data={players[player_name]}")
             window = MainWindow(players[player_name], player_name)
             window.show()
             sys.exit(app.exec())
         else:
             QMessageBox.warning(None, "No Name", "Please enter a valid name.")
-            sys.exit(1)  # Exit with error code if no name is provided
+            sys.exit(1)
     else:
-        sys.exit(0)  # Exit gracefully if dialog is cancelled
+        sys.exit(0)
