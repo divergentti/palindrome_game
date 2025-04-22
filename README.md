@@ -6,7 +6,7 @@ Welcome to the **Palindrome Game**, an interactive application designed to gener
 
 Videos: 
 1. [PalindromeGame version 0.0.1](https://youtu.be/5A3nKrbZ9SQ)
-2. [PalindromeGame in Windows 11](https://youtu.be/s4_XT852RUA)
+2. [PalindromeGame in Windows 11](https://youtu.be/7HxxwZ2sWaU)
  
 
 ## Table of Contents
