@@ -754,7 +754,8 @@ class PalindromeVisualizationDialog(QDialog):
 class PlayerStatsDialog(QDialog):
     def __init__(self, player_name, player_data):
         super().__init__()
-        print(f"PlayerStatsDialog: player_name={player_name}, player_data={player_data}")
+        if debug_gui:
+            print(f"PlayerStatsDialog: player_name={player_name}, player_data={player_data}")
         self.setWindowTitle(f"Stats for {player_name}")
         self.setGeometry(100, 100, 500, 400)
         layout = QVBoxLayout()
@@ -1502,7 +1503,8 @@ if __name__ == "__main__":
                 if debug_files:
                     print(f"Using existing player: {player_name}, data={players[player_name]}")
             # Start the game with the player's data
-            print(f"Passing to MainWindow: player_name={player_name}, player_data={players[player_name]}")
+            if debug_files:
+                print(f"Passing to MainWindow: player_name={player_name}, player_data={players[player_name]}")
             window = MainWindow(players[player_name], player_name)
             window.show()
             sys.exit(app.exec())
